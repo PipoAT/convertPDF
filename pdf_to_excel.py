@@ -43,8 +43,16 @@ def pdf_to_excel():
                 page = pdf.pages[p-1]  # pdfplumber uses zero-based page indexing
                 table = page.extract_table()  # extract the table into a list of lists
                 df = pd.DataFrame(table[1:], columns=table[0])  # convert the table into a pandas DataFrame
-                df = df[df['Name'] != 'Reserved']
-                df.to_excel(writer, sheet_name = pdf_file_name[:29] + '_' + str(i), index=False)  # write the DataFrame to the Excel file
+                
+                # format to exclude rows that have a reserved name or is '-'
+                df = df[df[df.columns[1]] != 'Reserved']
+                df = df[df[df.columns[1]] != '—']
+
+                # sets the value of the page column as a numeric type if it does not contain a /, otherwise leave as a string type
+                df[df.columns[10]] = df[df.columns[10]].apply(lambda x: pd.to_numeric(x, errors='coerce') if not "/" in str(x) else x)
+
+                # write the DataFrame to the Excel file
+                df.to_excel(writer, sheet_name = pdf_file_name[:20] + '_Page' + str(p), index=False)
 
 # Use the function
 pdf_to_excel()
