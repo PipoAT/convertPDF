@@ -1,7 +1,9 @@
 import PySimpleGUI as sg
 import pdfplumber
 from PyPDF2 import PdfReader
+from openpyxl import load_workbook
 import pandas as pd
+import shutil
 import tkinter as tk
 import os
 import re
@@ -19,6 +21,33 @@ def is_valid_page_input(page_numbers):
         return True
     except ValueError:
         return False
+    
+def merge_cells_with_text(excel_file, sheet_name):
+    '''
+    merge_cells_with_text() is a function that merges cells in an Excel file
+    which include the one with any non-empty text followed by any and all cells
+    that are blank to the right of that cell
+    '''
+    # Load the workbook and select the sheet
+    wb = load_workbook(excel_file)
+    ws = wb[sheet_name]
+
+    # Iterate over the rows in the sheet
+    for row in ws.iter_rows():
+        # Iterate over the cells in the row
+        for cell in row:
+            # If the cell contains any non-empty text
+            if cell.value is not None and str(cell.value).strip() != '':
+                # Find the next non-empty cell in the row
+                next_cell_index = cell.column + 1
+                while next_cell_index <= ws.max_column and (ws.cell(row=cell.row, column=next_cell_index).value is None or str(ws.cell(row=cell.row, column=next_cell_index).value).strip() == ''):
+                    next_cell_index += 1
+
+                # Merge the cells from the current cell to the next non-empty cell
+                ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=next_cell_index-1)
+
+    # Save the workbook
+    wb.save(excel_file)
 
 
 def pdf_to_excel(pdf_file, page_numbers):
@@ -39,6 +68,8 @@ def pdf_to_excel(pdf_file, page_numbers):
 
     # Obtain the path for the excel file
     excel_file = os.path.join(folder_selected, pdf_file_name[:10] + ".xlsx")
+
+    excel_file_name = os.path.splitext(os.path.basename(excel_file))[0] + ".xlsx"
 
     # Ask the user to input the page numbers
     pages = list(map(int, page_numbers.split(',')))
@@ -78,9 +109,16 @@ def pdf_to_excel(pdf_file, page_numbers):
 
                             # write each DataFrame to the Excel file
                             df.to_excel(writer, sheet_name = pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1), index=False)
+
         else:
             # if no tables exist, write the text
             pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages)
+
+    # Copy the Excel file to the current directory
+    shutil.copy(excel_file, os.getcwd())
+
+    # call function to adjust format of resulting excel file to merge cells as needed
+    merge_cells_with_text(excel_file_name, pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1))
 
 
 def pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages):
