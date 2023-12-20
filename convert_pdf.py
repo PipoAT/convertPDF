@@ -6,11 +6,26 @@ import tkinter as tk
 import os
 import re
 
-'''
-pdf_to_excel() is a function that reads tables in a pdf file and converts the data into an excel file
-with desired formatting/restrictions
-'''
+def is_valid_page_input(page_numbers):
+    """
+    Check if the page input is not blank and contains valid data.
+    """
+    if not page_numbers.strip():
+        return False
+
+    try:
+        # Check if all values are integers
+        list(map(int, page_numbers.split(',')))
+        return True
+    except ValueError:
+        return False
+
+
 def pdf_to_excel(pdf_file, page_numbers):
+    '''
+    pdf_to_excel() is a function that reads tables in a pdf file and converts the data into an excel file
+    with desired formatting/restrictions
+    '''
     # Create a root window and hide it
     root = tk.Tk()
     root.withdraw()
@@ -50,8 +65,12 @@ def pdf_to_excel(pdf_file, page_numbers):
                             df = pd.DataFrame(table[1:], columns=table[0])  # convert each table into a pandas DataFrame
 
                             # format to exclude rows that have a reserved name or is '-'
-                            df = df[df[df.columns[1]] != 'Reserved']
-                            df = df[df[df.columns[1]] != '—']
+                            # checks for valid column indexing and ignores formatting if invalid
+                            try:
+                                df = df[df[df.columns[1]] != 'Reserved']
+                                df = df[df[df.columns[1]] != '—']
+                            except IndexError:
+                                continue
 
                             # sets the data to numeric if it reads a numeric value as a string, otherwise leave alone
                             for col in df.columns:
@@ -64,11 +83,11 @@ def pdf_to_excel(pdf_file, page_numbers):
             pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages)
 
 
-'''
-pdf_to_txt(pdf_file, pages) is a function that reads the text of the pdf and converts into a .txt file
-if no table exists. pdf_file is a string param and pages is a list[int] param
-'''
 def pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages):
+    '''
+    pdf_to_txt(pdf_file, pages) is a function that reads the text of the pdf and converts into a .txt file
+    if no table exists. pdf_file is a string param and pages is a list[int] param
+    '''
     # Create a root window and hide it
     root = tk.Tk()
     root.withdraw()
@@ -102,9 +121,9 @@ def pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages):
 # define the layout of the GUI
 layout = [
     [sg.Text("Select PDF File:")],
-    [sg.In(), sg.FileBrowse(file_types=(("PDF Files", "*.pdf"),))],
+    [sg.Input('', key="file"), sg.FileBrowse(file_types=(("PDF Files", "*.pdf"),))],
     [sg.Text("Enter the page numbers separated by commas (e.g., 1,2,3): ")],
-    [sg.Input()],
+    [sg.Input('', key="page")],
     [sg.Button("Convert"), sg.Button("Exit"), sg.Button("About")]
 ]
 
@@ -121,14 +140,28 @@ while True:
 
     # perform action with information
     if event == "Convert":
-        pdf_file = values[0]
-        page_numbers = values[1]
-        if pdf_file:
-            pdf_to_excel(pdf_file, page_numbers)
-            sg.popup("ALERT","Conversion is a success!")
+        # obtain the pdf file from user input
+        pdf_file = values['file']
+        # obtain page numbers from user input
+        page_numbers = values['page']
+        # checks if the page numbers are valid inputs by user
+        if not is_valid_page_input(page_numbers):
+            # throw popup if user input for page numbers is blank or invalid
+            sg.popup("ALERT", "Please enter valid page numbers!")
         else:
-            sg.popup("ALERT","Please select a PDF file")
+            # call the function to convert if pdf is valid
+            if pdf_file:
+                pdf_to_excel(pdf_file, page_numbers)
+                # show alert that conversion is complete
+                sg.popup("ALERT","Conversion is a success!")
+                # clear input fields
+                window['file'].update('')
+                window['page'].update('')
+            else:
+                # if no pdf is selected or is invalid, display alert
+                sg.popup("ALERT","Please select a PDF file")
     
+    # if user selects the About button, display the software info as a popup/alert
     if event == "About":
         sg.popup("INFO","Version 1.0.0\nSoftware Developed by Andrew T. Pipo")
 
