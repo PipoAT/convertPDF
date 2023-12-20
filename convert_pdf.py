@@ -4,7 +4,6 @@ from PyPDF2 import PdfReader
 from openpyxl import load_workbook
 import pandas as pd
 import shutil
-import tkinter as tk
 import os
 import re
 
@@ -55,9 +54,6 @@ def pdf_to_excel(pdf_file, page_numbers):
     pdf_to_excel() is a function that reads tables in a pdf file and converts the data into an excel file
     with desired formatting/restrictions
     '''
-    # Create a root window and hide it
-    root = tk.Tk()
-    root.withdraw()
 
     # obtain the pdf file name
     pdf_file_name = os.path.splitext(os.path.basename(pdf_file))[0]
@@ -126,9 +122,6 @@ def pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages):
     pdf_to_txt(pdf_file, pages) is a function that reads the text of the pdf and converts into a .txt file
     if no table exists. pdf_file is a string param and pages is a list[int] param
     '''
-    # Create a root window and hide it
-    root = tk.Tk()
-    root.withdraw()
 
     # Open a file dialog to select the output text file
     txt_file = os.path.join(folder_selected, pdf_file_name[:10] + ".txt")
