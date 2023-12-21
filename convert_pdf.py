@@ -3,7 +3,6 @@ import pdfplumber
 from PyPDF2 import PdfReader
 from openpyxl import load_workbook
 import pandas as pd
-import shutil
 import os
 import re
 
@@ -13,7 +12,7 @@ def is_valid_page_input(page_numbers):
     """
     if not page_numbers.strip():
         return False
-
+    
     try:
         # Check if all values are integers
         list(map(int, page_numbers.split(',')))
@@ -58,63 +57,50 @@ def pdf_to_excel(pdf_file, page_numbers):
     # obtain the pdf file name
     pdf_file_name = os.path.splitext(os.path.basename(pdf_file))[0]
 
-
     # Open a file dialog to select the folder for output files
     folder_selected = os.path.dirname(pdf_file)
 
     # Obtain the path for the excel file
     excel_file = os.path.join(folder_selected, pdf_file_name[:10] + ".xlsx")
 
-    excel_file_name = os.path.splitext(os.path.basename(excel_file))[0] + ".xlsx"
-
     # Ask the user to input the page numbers
     pages = list(map(int, page_numbers.split(',')))
 
+    has_tables = False
     # Open the PDF file
     with pdfplumber.open(pdf_file) as pdf:
-        # Check if there are any tables on the specified pages
-        has_tables = False
-        for p in pages:
-            page = pdf.pages[p-1]  # pdfplumber uses zero-based page indexing
-            tables = page.extract_tables()  # extract all tables into a list of tables
-            if any(cell.strip() for table in tables for row in table for cell in row):  # check if there are any non-empty tables that exist
-                has_tables = True
-                break
-
         # If there are tables, create the Excel file and write the tables to it
-        if has_tables:
-            with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-                for i, p in enumerate(pages):
-                    page = pdf.pages[p-1]  # pdfplumber uses zero-based page indexing
-                    tables = page.extract_tables()  # extract all tables into a list of tables
-                    if any(cell.strip() for table in tables for row in table for cell in row):  # check if there are any non-empty tables that exist
-                        for j, table in enumerate(tables):
-                            df = pd.DataFrame(table[1:], columns=table[0])  # convert each table into a pandas DataFrame
+        with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+            for _, p in enumerate(pages):
+                page = pdf.pages[p-1]  # pdfplumber uses zero-based page indexing
+                tables = page.extract_tables()  # extract all tables into a list of tables
+                if any(cell.strip() for table in tables for row in table for cell in row):  # check if there are any non-empty tables that exist
+                    has_tables = True
+                    for j, table in enumerate(tables):
+                        df = pd.DataFrame(table[1:], columns=table[0])  # convert each table into a pandas DataFrame
 
-                            # format to exclude rows that have a reserved name or is '-'
-                            # checks for valid column indexing and ignores formatting if invalid
-                            try:
-                                df = df[df[df.columns[1]] != 'Reserved']
-                                df = df[df[df.columns[1]] != '—']
-                            except IndexError:
-                                continue
+                        # format to exclude rows that have a reserved name or is '-' assuming valid column exists
+                        try:
+                            df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
+                        except IndexError:
+                            continue
 
-                            # sets the data to numeric if it reads a numeric value as a string, otherwise leave alone
-                            for col in df.columns:
-                                df[col] = df[col].apply(lambda x: pd.to_numeric(x, errors='ignore') if re.search(r'\d', str(x)) else x)
+                        # sets the data to numeric if it reads a numeric value as a string, otherwise leave alone
+                        for col in df.columns:
+                            df[col] = df[col].apply(lambda x: pd.to_numeric(x, errors='ignore') if re.search(r'\d', str(x)) else x)
 
-                            # write each DataFrame to the Excel file
-                            df.to_excel(writer, sheet_name = pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1), index=False)
+                        # write each DataFrame to the Excel file
+                        df.to_excel(writer, sheet_name = pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1), index=False)
 
-        else:
-            # if no tables exist, write the text
-            pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages)
-
-    # Copy the Excel file to the current directory
-    shutil.copy(excel_file, os.getcwd())
+                else:
+                    # if no tables exist, write the text
+                    pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages)
 
     # call function to adjust format of resulting excel file to merge cells as needed
-    merge_cells_with_text(excel_file_name, pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1))
+    if has_tables:
+        merge_cells_with_text(excel_file, pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1))
+    else:
+        os.remove(excel_file)
 
 
 def pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages):
@@ -129,24 +115,15 @@ def pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages):
     # Ask the user for the start and end page numbers
     start_page = min(pages)-1
     end_page = max(pages)
-
-    # Create a PDF file reader object
-    pdf_reader = PdfReader(pdf_file)
-
-    # Initialize an empty string to hold the PDF text
-    pdf_text = ''
-
-    # Loop through the selected pages in the PDF
-    for page in pdf_reader.pages[start_page:end_page]:
-        # Extract the text from the page
-        page_text = page.extract_text()
-        # Add the page text to the overall PDF text
-        pdf_text += page_text
-
+    
     # Open the text file in write mode with utf-8 encoding
     with open(txt_file, 'w', encoding='utf-8') as txt:
-        # Write the PDF text to the text file
-        txt.write(pdf_text)
+        pdf_text = ''
+        for page in PdfReader(pdf_file).pages[start_page:end_page]:
+            # Extract the text from the pdf and add to text file
+            pdf_text += page.extract_text()
+            txt.write(pdf_text)
+
 
 
 # define the layout of the GUI
