@@ -32,5 +32,7 @@ with open('output.txt', 'w') as file:
             # Skip the cells in the 'address' and 'page' columns
             if i in indices_to_exclude or cell is None or cell == '-':
                 continue
+            if ' ' in cell:
+                continue
             file.write(f'#define {row[1]}_Bit{j-1} {cell}\n')
             j -= 1
