@@ -2,9 +2,40 @@ import PySimpleGUI as sg
 import pdfplumber
 from PyPDF2 import PdfReader
 from openpyxl import load_workbook
+import openpyxl
 import pandas as pd
 import os
 import re
+
+def excel_to_prgm(excel_file):
+    # Load the workbook and select the active worksheet
+    workbook = openpyxl.load_workbook(excel_file)
+    sheet = workbook.active
+
+    # Open a text file in write mode
+    with open('output.cpp', 'w') as file:
+        # Get the headers from the first row of the worksheet
+        headers = [cell.value for cell in sheet[1]]
+
+        # Check if 'address' and 'page' are in the headers and get their indices
+        indices_to_exclude = [i for i, header in enumerate(headers) if header.lower() in ['address', 'page']]
+
+        # Iterate through each row in the worksheet starting from the second row
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            # Skip rows without a name
+            if row[0] is None:
+                continue
+            # Write #define directives to text file
+            j = 8
+            for i, cell in enumerate(row[2:10], 1):
+                # Skip the cells in the 'address' and 'page' columns
+                if i in indices_to_exclude or cell is None or cell == '-' or cell == '—':
+                    continue
+                if ' ' in cell:
+                    continue
+                file.write(f'#define {row[1]}_Bit{j-1} {cell}\n')
+                j -= 1
+
 
 def is_valid_page_input(page_numbers):
     """
@@ -46,6 +77,8 @@ def merge_cells_with_text(excel_file, sheet_name):
 
     # Save the workbook
     wb.save(excel_file)
+    # convert to .cpp file with define statements
+    excel_to_prgm(excel_file)
 
 
 def pdf_to_excel(pdf_file, page_numbers):
