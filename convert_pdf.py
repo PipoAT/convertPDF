@@ -31,6 +31,8 @@ def excel_to_prgm(wbactivesheet):
                     file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
                 elif 'PORT' in cell:
                     file.write(f'#define {cell} {cell[4]}, {cell[5]}\n')
+                elif 'DD' in cell:
+                    file.write(f'#define {cell} {cell[2]}, {cell[3]}\n')
                 else:
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
 
@@ -169,7 +171,6 @@ while True:
                 # show alert that conversion is complete
                 sg.popup("ALERT","Conversion is a success!")
                 # clear input fields
-                window['file'].update('')
                 window['page'].update('')
             else:
                 # if no pdf is selected or is invalid, display alert
