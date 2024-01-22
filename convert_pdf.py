@@ -15,18 +15,25 @@ def excel_to_prgm(wbactivesheet):
         headers = [cell.value for cell in wbactivesheet[1]]
 
         # Check if 'address' and 'page' are in the headers and get their indices
-        indices_to_exclude = [i for i, header in enumerate(headers) if header.lower() in ['address', 'page']]
+        indices_to_exclude = [i for i, header in enumerate(headers) if 'address' in header.lower() or 'page' in header.lower()]
 
         # Iterate through each row in the worksheet starting from the second row
         for row in wbactivesheet.iter_rows(min_row=2, values_only=True):
             # Skip rows without a name
             if row[0] is None:
                 continue
-            # Write #define directives to text file
+            # Write #define directives to cpp file
             for i, cell in enumerate(row[2:10], 1):
                 # Skip the cells with invalid data
                 if i in indices_to_exclude or not cell or cell in ['-', '—', ' ']:
                     continue
+                row_as_list = list(row)  # Convert tuple to list
+                if '(' in row_as_list[1]: 
+                    # remove any () as they relate to footnotes in datasheets and are not needed in cpp file
+                    row_as_list[1] = re.sub(r'\(.*?\)', '', row_as_list[1])
+                row = tuple(row_as_list)  # Convert list back to tuple if necessary
+                if '(' in cell:
+                    cell = re.sub(r'\(.*?\)', '', cell)
                 if 'PIN' in cell:
                     file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
                 elif 'PORT' in cell:
@@ -35,6 +42,7 @@ def excel_to_prgm(wbactivesheet):
                     file.write(f'#define {cell} {cell[2]}, {cell[3]}\n')
                 else:
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
+
 
 def is_valid_page_input(page_numbers):
     """
