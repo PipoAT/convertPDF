@@ -1,13 +1,14 @@
 import PySimpleGUI as sg
 import pdfplumber
-from PyPDF2 import PdfReader
 from openpyxl import load_workbook
 import pandas as pd
 import os
 import re
 
 def excel_to_prgm(wbactivesheet):
-    
+    """
+    Converts the formatted excel spreadsheet into the cpp file as #define headers with desired formatting
+    """
     # Open a text file in write mode
     with open('output.cpp', 'w') as file:
         # Get the headers from the first row of the worksheet
@@ -28,6 +29,8 @@ def excel_to_prgm(wbactivesheet):
                     continue
                 if 'PIN' in cell:
                     file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
+                elif 'PORT' in cell:
+                    file.write(f'#define {cell} {cell[4]}, {cell[5]}\n')
                 else:
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
 
@@ -39,7 +42,7 @@ def is_valid_page_input(page_numbers):
         return False
     try:
         # Check if all values are integers
-        list(map(int, page_numbers.split(',')))
+        list(map(int, page_numbers))
         return True
     except ValueError:
         return False
@@ -118,10 +121,10 @@ def pdf_to_excel(pdf_file, page_numbers):
 
                         # write each DataFrame to the Excel file
                         df.to_excel(writer, sheet_name = pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1), index=False)
-
                 else:
                     # if no tables exist, write the text
-                    pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages)
+                    sg.popup("ALERT", "No Tables Exist.")
+                    break
 
     # call function to adjust format of resulting excel file to merge cells as needed
     if has_tables:
@@ -129,35 +132,11 @@ def pdf_to_excel(pdf_file, page_numbers):
     else:
         os.remove(excel_file)
 
-
-def pdf_to_txt(pdf_file, pdf_file_name, folder_selected, pages):
-    '''
-    pdf_to_txt(pdf_file, pages) is a function that reads the text of the pdf and converts into a .txt file
-    if no table exists. pdf_file is a string param and pages is a list[int] param
-    '''
-
-    # Open a file dialog to select the output text file
-    txt_file = os.path.join(folder_selected, pdf_file_name[:10] + ".txt")
-
-    # Ask the user for the start and end page numbers
-    start_page = min(pages)-1
-    end_page = max(pages)
-    
-    # Open the text file in write mode with utf-8 encoding
-    with open(txt_file, 'w', encoding='utf-8') as txt:
-        pdf_text = ''
-        for page in PdfReader(pdf_file).pages[start_page:end_page]:
-            # Extract the text from the pdf and add to text file
-            pdf_text += page.extract_text()
-            txt.write(pdf_text)
-
-
-
 # define the layout of the GUI
 layout = [
     [sg.Text("Select PDF File:")],
     [sg.Input('', key="file"), sg.FileBrowse(file_types=(("PDF Files", "*.pdf"),))],
-    [sg.Text("Enter the page numbers separated by commas (e.g., 1,2,3): ")],
+    [sg.Text("Enter the page number: ")],
     [sg.Input('', key="page")],
     [sg.Button("Convert"), sg.Button("Exit"), sg.Button("About")]
 ]
