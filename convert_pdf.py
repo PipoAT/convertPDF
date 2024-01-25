@@ -9,38 +9,38 @@ def excel_to_prgm(wbactivesheet):
     """
     Converts the formatted excel spreadsheet into the cpp file as #define headers with desired formatting
     """
-    # Open a text file in write mode
+    # open a text file in write mode
     with open('output.cpp', 'w') as file:
-        # Get the headers from the first row of the worksheet
+        # get the headers from the first row of the worksheet
         headers = [cell.value for cell in wbactivesheet[1]]
 
-        # Check if 'address' and 'page' are in the headers and get their indices
+        # check if 'address' and 'page' are in the headers and get their indices
         indices_to_exclude = [i for i, header in enumerate(headers) if 'address' in header.lower() or 'page' in header.lower()]
 
-        # Iterate through each row in the worksheet starting from the second row
+        # iterate through each row in the worksheet starting from the second row
         for row in wbactivesheet.iter_rows(min_row=2, values_only=True):
-            # Skip rows without a name
+            # skip rows without a name
             if row[0] is None:
                 continue
             # Write #define directives to cpp file
             for i, cell in enumerate(row[2:10], 1):
-                # Skip the cells with invalid data
+                # skip the cells with invalid data
                 if i in indices_to_exclude or not cell or cell in ['-', '—', ' ']:
                     continue
-                row_as_list = list(row)  # Convert tuple to list
+                row_as_list = list(row)  # convert tuple to list
                 if '(' in row_as_list[1]: 
                     # remove any () as they relate to footnotes in datasheets and are not needed in cpp file
                     row_as_list[1] = re.sub(r'\(.*?\)', '', row_as_list[1])
                 row = tuple(row_as_list)  # Convert list back to tuple if necessary
                 if '(' in cell:
                     cell = re.sub(r'\(.*?\)', '', cell)
-                if 'PIN' in cell:
+                if 'PIN' in cell: # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
                     file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
                 elif 'PORT' in cell:
                     file.write(f'#define {cell} {cell[4]}, {cell[5]}\n')
                 elif 'DD' in cell:
                     file.write(f'#define {cell} {cell[2]}, {cell[3]}\n')
-                else:
+                else: # if none of the above is true, define with original data/info
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
 
 
@@ -72,15 +72,27 @@ def merge_cells_with_text(excel_file, sheet_name):
     for row in ws.iter_rows():
         # Iterate over the cells in the row
         for cell in row:
-            # If the cell contains any non-empty text
-            if cell.value is not None and str(cell.value).strip() != '':
+            # Get the value of the current cell as a stripped string (empty string if None)
+            value = str(cell.value).strip() if cell.value is not None else ''
+            
+            # Check if the current cell contains non-empty text
+            if value:
                 # Find the next non-empty cell in the row
                 next_cell_index = cell.column + 1
-                while next_cell_index <= ws.max_column and (ws.cell(row=cell.row, column=next_cell_index).value is None or str(ws.cell(row=cell.row, column=next_cell_index).value).strip() == ''):
+
+                while next_cell_index <= ws.max_column:
+                    # Get the value of the next cell as a stripped string (empty string if None)
+                    next_cell = ws.cell(row=cell.row, column=next_cell_index)
+                    next_value = str(next_cell.value).strip() if next_cell.value is not None else ''
+
+                    # If the next cell contains non-empty text, exit the loop
+                    if next_value:
+                        break
+
                     next_cell_index += 1
 
                 # Merge the cells from the current cell to the next non-empty cell
-                ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=next_cell_index-1)
+                ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=next_cell_index - 1)
 
     # Save the workbook
     wb.save(excel_file)
@@ -89,57 +101,47 @@ def merge_cells_with_text(excel_file, sheet_name):
 
 
 def pdf_to_excel(pdf_file, page_numbers):
-    '''
-    pdf_to_excel() is a function that reads tables in a pdf file and converts the data into an excel file
-    with desired formatting/restrictions
-    '''
-
-    # obtain the pdf file name
+    # obtain file names, folder, and pages
     pdf_file_name = os.path.splitext(os.path.basename(pdf_file))[0]
-
-    # Open a file dialog to select the folder for output files
     folder_selected = os.path.dirname(pdf_file)
-
-    # Obtain the path for the excel file
     excel_file = os.path.join(folder_selected, pdf_file_name[:10] + ".xlsx")
-
-    # Ask the user to input the page numbers
     pages = list(map(int, page_numbers.split(',')))
 
     has_tables = False
-    # Open the PDF file
-    with pdfplumber.open(pdf_file) as pdf:
-        # If there are tables, create the Excel file and write the tables to it
-        with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-            for _, p in enumerate(pages):
-                page = pdf.pages[p-1]  # pdfplumber uses zero-based page indexing
-                tables = page.extract_tables()  # extract all tables into a list of tables
-                if any(cell.strip() for table in tables for row in table for cell in row):  # check if there are any non-empty tables that exist
-                    has_tables = True
-                    for j, table in enumerate(tables):
-                        df = pd.DataFrame(table[1:], columns=table[0])  # convert each table into a pandas DataFrame
 
-                        # format to exclude rows that have a reserved name or is '-' assuming valid column exists
+    with pdfplumber.open(pdf_file) as pdf:
+        with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+            for p in pages:
+                page = pdf.pages[p-1]
+                tables = page.extract_tables()
+                # checks if there is existing data
+                if any(cell.strip() for table in tables for row in table for cell in row):
+                    has_tables = True
+                    # iterates through each table and formats the data in the excel spreadsheet
+                    for j, table in enumerate(tables):
+                        df = pd.DataFrame(table[1:], columns=table[0])
+
                         try:
+                            # Exclude rows with reserved names or '-'
                             df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
-                        except IndexError:
+                        except IndexError: # if there are any errors with exclusion, ignore and continue on
                             continue
 
-                        # sets the data to numeric if it reads a numeric value as a string, otherwise leave alone
-                        for col in df.columns:
-                            df[col] = df[col].apply(lambda x: pd.to_numeric(x, errors='ignore') if re.search(r'\d', str(x)) else x)
+                        # Convert numeric values to numeric type
+                        df = df.apply(pd.to_numeric, errors='ignore')
 
-                        # write each DataFrame to the Excel file
-                        df.to_excel(writer, sheet_name = pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1), index=False)
-                else:
-                    # if no tables exist, write the text
+                        sheet_name = f"{pdf_file_name[:10]}_Page{p}_Table{j+1}"
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+                    break  # Exit the loop if tables are found
+
+                else: # If no tables exist, throw alert.
                     sg.popup("ALERT", "No Tables Exist.")
                     break
 
-    # call function to adjust format of resulting excel file to merge cells as needed
-    if has_tables:
-        merge_cells_with_text(excel_file, pdf_file_name[:10] + '_Page' + str(p) + '_Table' + str(j+1))
-    else:
+    if has_tables: # call the function to format cells in newly created excel file if there are tables
+        merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{p}_Table{j+1}")
+    else: # if there is no tables, delete the excel file automatically created.
         os.remove(excel_file)
 
 # define the layout of the GUI
@@ -177,7 +179,7 @@ while True:
             if pdf_file:
                 pdf_to_excel(pdf_file, page_numbers)
                 # show alert that conversion is complete
-                sg.popup("ALERT","Conversion is a success!")
+                sg.popup("ALERT","Process Completed!")
                 # clear input fields
                 window['page'].update('')
             else:
