@@ -7,7 +7,10 @@ import re
 
 def excel_to_prgm(wbactivesheet):
     """
-    Converts the formatted excel spreadsheet into the cpp file as #define headers with desired formatting
+    excel_to_prgm reads the data from the created excel spreadsheet and creates the define
+    attributes in a newly created c plus plus file.
+
+    :param wbactivesheet: the active excel sheet that contains the data
     """
     # open a text file in write mode
     with open('output.cpp', 'w') as file:
@@ -46,7 +49,9 @@ def excel_to_prgm(wbactivesheet):
 
 def is_valid_page_input(page_numbers):
     """
-    Check if the page input is not blank and contains valid data.
+    Is_valid_page_input checks if the page input is not blank and contains valid data.
+
+    :param page_numbers: an single or multiple integer value(s)
     """
     if not page_numbers.strip():
         return False
@@ -59,9 +64,12 @@ def is_valid_page_input(page_numbers):
     
 def merge_cells_with_text(excel_file, sheet_name):
     '''
-    merge_cells_with_text() is a function that merges cells in an Excel file
+    merge_cells_with_text is a function that merges cells in an Excel file
     which include the one with any non-empty text followed by any and all cells
     that are blank to the right of that cell
+
+    :param excel_file: the excel file that contains data/cells that need formatted
+    :param sheet_name: the active sheet within the excel file that contains data/cells that need formatted
     '''
     # Load the workbook and select the sheet
     wb = load_workbook(excel_file)
@@ -101,6 +109,13 @@ def merge_cells_with_text(excel_file, sheet_name):
 
 
 def pdf_to_excel(pdf_file, page_numbers):
+    '''
+    pdf_to_excel converts the pdf tables into the excel spreadsheet with desired formatting of
+    merged cells and certain columns
+
+    :param pdf_file: the pdf file that the python script will read from to obtain data
+    :param page_numbers: user-defined pages of a pdf as an integer(s) that the script will locate data from within the pdf
+    '''
     # obtain file names, folder, and pages
     pdf_file_name = os.path.splitext(os.path.basename(pdf_file))[0]
     folder_selected = os.path.dirname(pdf_file)
