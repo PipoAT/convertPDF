@@ -31,9 +31,8 @@ def excel_to_prgm(wbactivesheet):
                 if i in indices_to_exclude or not cell or cell in ['-', '—', ' ']:
                     continue
                 row_as_list = list(row)  # convert tuple to list
-                if '(' in row_as_list[1]: 
-                    # remove any () as they relate to footnotes in datasheets and are not needed in cpp file
-                    row_as_list[1] = re.sub(r'\(.*?\)', '', row_as_list[1])
+                # remove any () as they relate to footnotes in datasheets and are not needed in cpp file
+                row_as_list[1] = re.sub(r'\(.*?\)', '', row_as_list[1]) if '(' in row_as_list[1] else row_as_list[1]
                 row = tuple(row_as_list)  # Convert list back to tuple if necessary
                 if '(' in cell:
                     cell = re.sub(r'\(.*?\)', '', cell)
@@ -185,25 +184,20 @@ while True:
         pdf_file = values['file']
         # obtain page numbers from user input
         page_numbers = values['page']
-        # checks if the page numbers are valid inputs by user
+        # check if the page numbers and pdf file are valid inputs by user
         if not is_valid_page_input(page_numbers):
-            # throw popup if user input for page numbers is blank or invalid
             sg.popup("ALERT", "Please enter valid page numbers!")
+        elif not pdf_file:
+            sg.popup("ALERT","Please select a PDF file")
         else:
-            # call the function to convert if pdf is valid
-            if pdf_file:
-                pdf_to_excel(pdf_file, page_numbers)
-                # show alert that conversion is complete
-                sg.popup("ALERT","Process Completed!")
-                # clear input fields
-                window['page'].update('')
-            else:
-                # if no pdf is selected or is invalid, display alert
-                sg.popup("ALERT","Please select a PDF file")
+            # call the function to convert
+            pdf_to_excel(pdf_file, page_numbers)
+            # show alert that conversion is complete and clear input fields
+            sg.popup("ALERT","Process Completed!")
+            window['page'].update('')
     
     # if user selects the About button, display the software info as a popup/alert
-    if event == "About":
-        sg.popup("INFO","Version 1.0.0\nSoftware Developed by Andrew T. Pipo")
+    sg.popup("INFO","Version 1.0.0\nSoftware Developed by Andrew T. Pipo") if event == "About" else ""
 
 # close window
 window.close()
