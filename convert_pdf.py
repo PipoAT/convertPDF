@@ -3,7 +3,6 @@ import pdfplumber
 from openpyxl import load_workbook
 import pandas as pd
 import os
-import re
 
 def excel_to_prgm(wbactivesheet):
     """
@@ -32,10 +31,9 @@ def excel_to_prgm(wbactivesheet):
                     continue
                 row_as_list = list(row)  # convert tuple to list
                 # remove any () as they relate to footnotes in datasheets and are not needed in cpp file
-                row_as_list[1] = re.sub(r'\(.*?\)', '', row_as_list[1]) if '(' in row_as_list[1] else row_as_list[1]
+                row_as_list[1] = ''.join(row_as_list[1].split('(')[0]) if '(' in row_as_list[1] else cell
                 row = tuple(row_as_list)  # Convert list back to tuple if necessary
-                if '(' in cell:
-                    cell = re.sub(r'\(.*?\)', '', cell)
+                cell = cell.split('(')[0] if '(' in cell else cell
                 if 'PIN' in cell: # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
                     file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
                 elif 'PORT' in cell:
@@ -50,16 +48,10 @@ def is_valid_page_input(page_numbers):
     """
     Is_valid_page_input checks if the page input is not blank and contains valid data.
 
-    :param page_numbers: an single or multiple integer value(s)
+    :param page_numbers: an single integer value
     """
-    if not page_numbers.strip():
-        return False
-    try:
-        # Check if all values are integers
-        list(map(int, page_numbers))
-        return True
-    except ValueError:
-        return False
+    return isinstance(page_numbers, int) # check if number is an int
+
     
 def merge_cells_with_text(excel_file, sheet_name):
     '''
@@ -72,39 +64,31 @@ def merge_cells_with_text(excel_file, sheet_name):
     '''
     # Load the workbook and select the sheet
     wb = load_workbook(excel_file)
-    wbactivesheet = wb.active
     ws = wb[sheet_name]
-
     # Iterate over the rows in the sheet
     for row in ws.iter_rows():
         # Iterate over the cells in the row
         for cell in row:
             # Get the value of the current cell as a stripped string (empty string if None)
             value = str(cell.value).strip() if cell.value is not None else ''
-            
             # Check if the current cell contains non-empty text
             if value:
                 # Find the next non-empty cell in the row
                 next_cell_index = cell.column + 1
-
                 while next_cell_index <= ws.max_column:
                     # Get the value of the next cell as a stripped string (empty string if None)
-                    next_cell = ws.cell(row=cell.row, column=next_cell_index)
-                    next_value = str(next_cell.value).strip() if next_cell.value is not None else ''
-
+                    next_cell = ws.cell(row=cell.row, column=next_cell_index).value
                     # If the next cell contains non-empty text, exit the loop
-                    if next_value:
+                    if next_cell is not None:
                         break
-
                     next_cell_index += 1
-
                 # Merge the cells from the current cell to the next non-empty cell
                 ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=next_cell_index - 1)
 
     # Save the workbook
     wb.save(excel_file)
     # convert to .cpp file with define statements
-    excel_to_prgm(wbactivesheet)
+    excel_to_prgm(wb.active)
 
 
 def pdf_to_excel(pdf_file, page_numbers):
@@ -119,44 +103,40 @@ def pdf_to_excel(pdf_file, page_numbers):
     pdf_file_name = os.path.splitext(os.path.basename(pdf_file))[0]
     folder_selected = os.path.dirname(pdf_file)
     excel_file = os.path.join(folder_selected, pdf_file_name[:10] + ".xlsx")
-    pages = list(map(int, page_numbers.split(',')))
 
     has_tables = False
 
     with pdfplumber.open(pdf_file) as pdf:
-        with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-            for p in pages:
-                page = pdf.pages[p-1]
-                tables = page.extract_tables()
-                # checks if there is existing data
-                if any(cell.strip() for table in tables for row in table for cell in row):
-                    has_tables = True
-                    # iterates through each table and formats the data in the excel spreadsheet
-                    for j, table in enumerate(tables):
-                        df = pd.DataFrame(table[1:], columns=table[0])
+        try: # check if the pages are within the range of the pdfr
+            page = pdf.pages[page_numbers-1]
+        except IndexError: # handle index/out of range error by setting page to 0 to indicate no tables exist
+            page = pdf.pages[0]
+        tables = page.extract_tables()
+        # checks if there is existing data
+        if any(cell.strip() for table in tables for row in table for cell in row):
+            has_tables = True
+            # iterates through each table and formats the data in the excel spreadsheet
+            for j, table in enumerate(tables):
+                df = pd.DataFrame(table[1:], columns=table[0])
 
-                        try:
-                            # Exclude rows with reserved names or '-'
-                            df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
-                        except IndexError: # if there are any errors with exclusion, ignore and continue on
-                            continue
+                try:
+                    # Exclude rows with reserved names or '-'
+                    df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
+                except IndexError: # if there are any errors with exclusion, ignore and continue on
+                    continue
 
-                        # Convert numeric values to numeric type
-                        df = df.apply(pd.to_numeric, errors='ignore')
+                # Convert numeric values to numeric type
+                df = df.apply(pd.to_numeric, errors='ignore')
+                sheet_name = f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}"
+                with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-                        sheet_name = f"{pdf_file_name[:10]}_Page{p}_Table{j+1}"
-                        df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-                    break  # Exit the loop if tables are found
-
-                else: # If no tables exist, throw alert.
-                    sg.popup("ALERT", "No Tables Exist.")
-                    break
+        else: # If no tables exist, throw alert.
+            sg.popup("ALERT", "No Tables Exist.")
+            has_tables = False
 
     if has_tables: # call the function to format cells in newly created excel file if there are tables
-        merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{p}_Table{j+1}")
-    else: # if there is no tables, delete the excel file automatically created.
-        os.remove(excel_file)
+        merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}")
 
 # define the layout of the GUI
 layout = [
@@ -183,12 +163,19 @@ while True:
         # obtain the pdf file from user input
         pdf_file = values['file']
         # obtain page numbers from user input
-        page_numbers = values['page']
+        try:
+            page_numbers = int(values['page'])
+            if page_numbers > 0: # check if number is valid, positive int
+                page_numbers = page_numbers
+            else:
+                page_numbers = 0
+        except ValueError:
+            page_numbers = 0
         # check if the page numbers and pdf file are valid inputs by user
-        if not is_valid_page_input(page_numbers):
-            sg.popup("ALERT", "Please enter valid page numbers!")
-        elif not pdf_file:
+        if not pdf_file:
             sg.popup("ALERT","Please select a PDF file")
+        elif page_numbers == 0:
+            sg.popup("ALERT","Please enter valid page numbers!")
         else:
             # call the function to convert
             pdf_to_excel(pdf_file, page_numbers)
