@@ -29,11 +29,9 @@ def excel_to_prgm(wbactivesheet):
                 # skip the cells with invalid data
                 if i in indices_to_exclude or not cell or cell in ['-', '—', ' ']:
                     continue
-                row_as_list = list(row)  # convert tuple to list
-                # remove any () as they relate to footnotes in datasheets and are not needed in cpp file
-                row_as_list[1] = ''.join(row_as_list[1].split('(')[0]) if '(' in row_as_list[1] else cell
-                row = tuple(row_as_list)  # Convert list back to tuple if necessary
                 cell = cell.split('(')[0] if '(' in cell else cell
+                if len(cell) > 15: # prevent large amount of text from showing
+                    continue
                 if 'PIN' in cell: # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
                     file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
                 elif 'PORT' in cell:
@@ -42,15 +40,6 @@ def excel_to_prgm(wbactivesheet):
                     file.write(f'#define {cell} {cell[2]}, {cell[3]}\n')
                 else: # if none of the above is true, define with original data/info
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
-
-
-def is_valid_page_input(page_numbers):
-    """
-    Is_valid_page_input checks if the page input is not blank and contains valid data.
-
-    :param page_numbers: an single integer value
-    """
-    return isinstance(page_numbers, int) # check if number is an int
 
     
 def merge_cells_with_text(excel_file, sheet_name):
@@ -165,16 +154,12 @@ while True:
         # obtain page numbers from user input
         try:
             page_numbers = int(values['page'])
-            if page_numbers > 0: # check if number is valid, positive int
-                page_numbers = page_numbers
-            else:
-                page_numbers = 0
         except ValueError:
             page_numbers = 0
         # check if the page numbers and pdf file are valid inputs by user
         if not pdf_file:
             sg.popup("ALERT","Please select a PDF file")
-        elif page_numbers == 0:
+        elif page_numbers <= 0:
             sg.popup("ALERT","Please enter valid page numbers!")
         else:
             # call the function to convert
