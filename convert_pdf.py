@@ -22,17 +22,17 @@ def excel_to_prgm(wbactivesheet):
         # iterate through each row in the worksheet starting from the second row
         for row in wbactivesheet.iter_rows(min_row=2, values_only=True):
             # skip rows without a name
-            if row[0] is None:
-                continue
+            if row[0] is None: continue
             # Write #define directives to cpp file
             for i, cell in enumerate(row[2:10], 1):
                 # skip the cells with invalid data
                 if i in indices_to_exclude or not cell or cell in ['-', '—', ' ']:
                     continue
                 cell = cell.split('(')[0] if '(' in cell else cell
-                if len(cell) > 15: # prevent large amount of text from showing
-                    continue
-                if 'PIN' in cell: # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
+                # prevent large amount of text from showing
+                if len(cell) > 15: continue
+                 # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
+                if 'PIN' in cell:
                     file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
                 elif 'PORT' in cell:
                     file.write(f'#define {cell} {cell[4]}, {cell[5]}\n')
@@ -94,7 +94,6 @@ def pdf_to_excel(pdf_file, page_numbers):
     excel_file = os.path.join(folder_selected, pdf_file_name[:10] + ".xlsx")
 
     has_tables = False
-
     with pdfplumber.open(pdf_file) as pdf:
         try: # check if the pages are within the range of the pdfr
             page = pdf.pages[page_numbers-1]
@@ -122,10 +121,8 @@ def pdf_to_excel(pdf_file, page_numbers):
 
         else: # If no tables exist, throw alert.
             sg.popup("ALERT", "No Tables Exist.")
-            has_tables = False
 
-    if has_tables: # call the function to format cells in newly created excel file if there are tables
-        merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}")
+    merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}") if has_tables else ""
 
 # define the layout of the GUI
 layout = [
@@ -152,10 +149,7 @@ while True:
         # obtain the pdf file from user input
         pdf_file = values['file']
         # obtain page numbers from user input
-        try:
-            page_numbers = int(values['page'])
-        except ValueError:
-            page_numbers = 0
+        page_numbers = int(values['page']) if values['page'].isdigit() else 0
         # check if the page numbers and pdf file are valid inputs by user
         if not pdf_file:
             sg.popup("ALERT","Please select a PDF file")
