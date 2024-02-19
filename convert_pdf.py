@@ -4,6 +4,17 @@ from openpyxl import load_workbook
 import pandas as pd
 import os
 
+"""
+Future functionality that could be included
+
+def PWM():
+def Timers():
+def Interrupts():
+def USART():
+def SPI():
+def I2C():
+"""
+
 def add_DAC(file):
     """
     add_DAC adds to the desired .cpp file the information/definitions for DAC
@@ -79,24 +90,21 @@ def merge_cells_with_text(excel_file, sheet_name):
     wb = load_workbook(excel_file)
     ws = wb[sheet_name]
     # Iterate over the rows in the sheet
-    for row in ws.iter_rows():
-        # Iterate over the cells in the row
-        for cell in row:
-            # Get the value of the current cell as a stripped string (empty string if None)
-            value = str(cell.value).strip() if cell.value is not None else ''
-            # Check if the current cell contains non-empty text
-            if value:
-                # Find the next non-empty cell in the row
-                next_cell_index = cell.column + 1
-                while next_cell_index <= ws.max_column:
-                    # Get the value of the next cell as a stripped string (empty string if None)
-                    next_cell = ws.cell(row=cell.row, column=next_cell_index).value
-                    # If the next cell contains non-empty text, exit the loop
-                    if next_cell is not None:
-                        break
-                    next_cell_index += 1
-                # Merge the cells from the current cell to the next non-empty cell
-                ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=next_cell_index - 1)
+    for cell in (c for row in ws.iter_rows() for c in row):
+        # Get the value of the current cell as a stripped string (empty string if None)
+        value = str(cell.value).strip() if cell.value is not None else ''
+        # Check if the current cell contains non-empty text
+        if value:
+            # Find the next non-empty cell in the row
+            while cell.column <= ws.max_column:
+                # Get the value of the next cell as a stripped string (empty string if None)
+                next_cell = ws.cell(row=cell.row, column=cell.column).value
+                # If the next cell contains non-empty text, exit the loop
+                if next_cell is not None:
+                    break
+                cell.column += 1
+            # Merge the cells from the current cell to the next non-empty cell
+            ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=cell.column)
 
     # Save the workbook
     wb.save(excel_file)
@@ -119,12 +127,15 @@ def pdf_to_excel(pdf_file, page_numbers):
 
     has_tables = False
     with pdfplumber.open(pdf_file) as pdf:
-        try: # check if the pages are within the range of the pdfr
+        # check if the pages are within the range of the pdf
+        try:
             page = pdf.pages[page_numbers-1]
-        except IndexError: # handle index/out of range error by setting page to 0 to indicate no tables exist
+         # handle index/out of range error by setting page to 0 to indicate no tables exist
+        except IndexError:
             page = pdf.pages[0]
-        tables = page.extract_tables()
+
         # checks if there is existing data
+        tables = page.extract_tables()
         if any(cell.strip() for table in tables for row in table for cell in row):
             has_tables = True
             # iterates through each table and formats the data in the excel spreadsheet
@@ -134,16 +145,19 @@ def pdf_to_excel(pdf_file, page_numbers):
                 try:
                     # Exclude rows with reserved names or '-'
                     df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
-                except IndexError: # if there are any errors with exclusion, ignore and continue on
+                # if there are any errors with exclusion, ignore and continue on
+                except IndexError:
                     continue
 
                 # Convert numeric values to numeric type
                 df = df.apply(pd.to_numeric, errors='ignore')
+                # create the sheet name for the excel file
                 sheet_name = f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}"
+                # write to the excel file
                 with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
                     df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-        else: # If no tables exist, throw alert.
+        # If no tables exist, throw alert.
+        else: 
             sg.popup("ALERT", "No Tables Exist.")
 
     merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}") if has_tables else ""
