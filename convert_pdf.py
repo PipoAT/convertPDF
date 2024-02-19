@@ -57,17 +57,14 @@ def excel_to_prgm(wbactivesheet):
                 # prevent large amount of text from showing
                 if len(cell) > 15: continue
                  # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
-                if 'PIN' in cell:
-                    file.write(f'#define {cell} {cell[3]}, {cell[4]}\n')
-                elif 'PORT' in cell:
-                    file.write(f'#define {cell} {cell[4]}, {cell[5]}\n')
-                elif 'DD' in cell:
-                    file.write(f'#define {cell} {cell[2]}, {cell[3]}\n')
+                prefix_indices = {'PIN': (3, 4), 'PORT': (4, 5), 'DD': (2, 3)}
+                for prefix, indices in prefix_indices.items():
+                    if prefix in cell:
+                        file.write(f'#define {cell} {cell[indices[0]]}, {cell[indices[1]]}\n')
+                        break
                 else: # if none of the above is true, define with original data/info
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
         add_ADC(file)
-                
-
     
 def merge_cells_with_text(excel_file, sheet_name):
     '''
