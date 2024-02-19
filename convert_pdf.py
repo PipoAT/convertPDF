@@ -4,6 +4,31 @@ from openpyxl import load_workbook
 import pandas as pd
 import os
 
+def add_DAC(file):
+    """
+    add_DAC adds to the desired .cpp file the information/definitions for DAC
+    """
+    file.write("\n")
+    file.write("#define HAL_INCLUDES_DAC    1\n")
+    file.write("#define DAC_enable()                        DAC0_CTRLA |= (1 << DAC_ENABLE_bp)\n")
+    file.write("#define DAC_disable()                       DAC0_CTRLA &= ~(1 << DAC_ENABLE_bp)\n")
+    file.write("#define DAC_output_enable()         DAC0_CTRLA |= (1 << DAC_OUTEN_bp)\n")
+    file.write("#define DAC_output_disable()        DAC0_CTRLA &= ~(1 << DAC_OUTEN_bp)\n")
+    file.write("#define DAC_load(data)                  DAC0_DATA = (data << 6)")
+    
+
+def add_ADC(file):
+    """
+    add_ADC adds to the desired .cpp file the information/definitions for ADC
+    """
+    file.write("\n")
+    file.write("#define HAL_INCLUDES_ADC    1\n")
+    file.write("#define ADC_CHANNEL_REG                     ADC0_MUXPOS\n")
+    file.write("#define ADC_start_conversion()      ADC0_COMMAND |= (1 << ADC_STCONV_bp)\n")
+    file.write("#define ADC_get_status()                    ( !((ADC0_INTFLAGS >> ADC_RESRDY_bp) & 0x01))\n")
+    file.write("#define ADC_get_result()                    ADC0_RES\n")
+    add_DAC(file)
+
 def excel_to_prgm(wbactivesheet):
     """
     excel_to_prgm reads the data from the created excel spreadsheet and creates the define
@@ -40,6 +65,8 @@ def excel_to_prgm(wbactivesheet):
                     file.write(f'#define {cell} {cell[2]}, {cell[3]}\n')
                 else: # if none of the above is true, define with original data/info
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
+        add_ADC(file)
+                
 
     
 def merge_cells_with_text(excel_file, sheet_name):
