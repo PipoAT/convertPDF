@@ -14,6 +14,18 @@ def SPI():
 def I2C():
 """
 
+def add_SPI(file):
+    """
+    add_SPI() adds to the desired .cpp file the definitions for SPI
+    """
+    definitions = [
+        "SPIE", "SPE", "DORD", "MSTR", "CPOL", "CPHA", "SPR1", "SPR0", "SPI2X",
+        "MSB", "LSB"
+    ]
+    file.write("\n")
+    for definition in definitions:
+        file.write(f"#define {definition} 0\n")
+
 def add_USART(file):
     """
     add_USART adds to the desired .cpp file the definitions for USART
@@ -65,6 +77,8 @@ def excel_to_prgm(wbactivesheet):
         headers = [cell.value for cell in wbactivesheet[1]]
         if headers.__contains__("RXCIEn") or headers.__contains__("UMSELn1") or headers.__contains__("RXCn"):
             add_USART(file)
+        if headers.__contains__("SPIE") or headers.__contains__("MSB") or headers.__contains__("SPI2X"):
+            add_SPI(file)
 
         # check if 'address' and 'page' are in the headers and get their indices
         indices_to_exclude = [i for i, header in enumerate(headers) if 'address' in header.lower() or 'page' in header.lower()]
