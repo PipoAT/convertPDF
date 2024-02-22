@@ -10,10 +10,35 @@ Future functionality that could be included
 def PWM():
 def Timers():
 def Interrupts():
-def USART():
 def SPI():
 def I2C():
 """
+
+def add_USART(file):
+    """
+    add_USART adds to the desired .cpp file the definitions for USART
+    """
+    file.write("\n")
+    file.write("#define TXCn    0\n")
+    file.write("#define U2Xn    0\n")
+    file.write("#define MPCMn   0\n")
+    file.write("#define RXCIEn  0\n")
+    file.write("#define TXCIEn  0\n")
+    file.write("#define UDRIEn  0\n")
+    file.write("#define RXENn   0\n")
+    file.write("#define TXENn   0\n")
+    file.write("#define TXENn   0\n")
+    file.write("#define UCSZn2  0\n")
+    file.write("#define TXB8n   0\n")
+    file.write("#define UMSELn1 0\n")
+    file.write("#define UMSELn0 0\n")
+    file.write("#define UPMn1   0\n")
+    file.write("#define UPMn0   0\n")
+    file.write("#define USBSn   0\n")
+    file.write("#define UCSZn1  0\n")
+    file.write("#define UCSZn0  0\n")
+    file.write("#define UCPOLn  0\n")
+
 
 def add_DAC(file):
     """
@@ -51,6 +76,8 @@ def excel_to_prgm(wbactivesheet):
     with open('output.cpp', 'w') as file:
         # get the headers from the first row of the worksheet
         headers = [cell.value for cell in wbactivesheet[1]]
+        if headers.__contains__("RXCIEn") or headers.__contains__("UMSELn1") or headers.__contains__("RXCn"):
+            add_USART(file)
 
         # check if 'address' and 'page' are in the headers and get their indices
         indices_to_exclude = [i for i, header in enumerate(headers) if 'address' in header.lower() or 'page' in header.lower()]
@@ -130,7 +157,7 @@ def pdf_to_excel(pdf_file, page_numbers):
         # check if the pages are within the range of the pdf
         try:
             page = pdf.pages[page_numbers-1]
-         # handle index/out of range error by setting page to 0 to indicate no tables exist
+        # handle index/out of range error by setting page to 0 to indicate no tables exist
         except IndexError:
             page = pdf.pages[0]
 
@@ -138,29 +165,31 @@ def pdf_to_excel(pdf_file, page_numbers):
         tables = page.extract_tables()
         if any(cell.strip() for table in tables for row in table for cell in row):
             has_tables = True
-            # iterates through each table and formats the data in the excel spreadsheet
-            for j, table in enumerate(tables):
-                df = pd.DataFrame(table[1:], columns=table[0])
+            # create the ExcelWriter object outside the loop
+            with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+                # iterates through each table and formats the data in the excel spreadsheet
+                for j, table in enumerate(tables):
+                    df = pd.DataFrame(table[1:], columns=table[0])
 
-                try:
-                    # Exclude rows with reserved names or '-'
-                    df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
-                # if there are any errors with exclusion, ignore and continue on
-                except IndexError:
-                    continue
+                    try:
+                        # Exclude rows with reserved names or '-'
+                        df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
+                    # if there are any errors with exclusion, ignore and continue on
+                    except IndexError:
+                        continue
 
-                # Convert numeric values to numeric type
-                df = df.apply(pd.to_numeric, errors='ignore')
-                # create the sheet name for the excel file
-                sheet_name = f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}"
-                # write to the excel file
-                with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+                    # Convert numeric values to numeric type
+                    df = df.apply(pd.to_numeric, errors='ignore')
+                    # create the sheet name for the excel file
+                    sheet_name = f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}"
+                    # write to the excel file
                     df.to_excel(writer, sheet_name=sheet_name, index=False)
         # If no tables exist, throw alert.
         else: 
             sg.popup("ALERT", "No Tables Exist.")
 
     merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}") if has_tables else ""
+
 
 # define the layout of the GUI
 layout = [
