@@ -18,27 +18,15 @@ def add_USART(file):
     """
     add_USART adds to the desired .cpp file the definitions for USART
     """
-    file.write("\n")
-    file.write("#define TXCn    0\n")
-    file.write("#define U2Xn    0\n")
-    file.write("#define MPCMn   0\n")
-    file.write("#define RXCIEn  0\n")
-    file.write("#define TXCIEn  0\n")
-    file.write("#define UDRIEn  0\n")
-    file.write("#define RXENn   0\n")
-    file.write("#define TXENn   0\n")
-    file.write("#define TXENn   0\n")
-    file.write("#define UCSZn2  0\n")
-    file.write("#define TXB8n   0\n")
-    file.write("#define UMSELn1 0\n")
-    file.write("#define UMSELn0 0\n")
-    file.write("#define UPMn1   0\n")
-    file.write("#define UPMn0   0\n")
-    file.write("#define USBSn   0\n")
-    file.write("#define UCSZn1  0\n")
-    file.write("#define UCSZn0  0\n")
-    file.write("#define UCPOLn  0\n")
+    definitions = [
+        "TXCn", "U2Xn", "MPCMn", "RXCIEn", "TXCIEn", "UDRIEn", "RXENn", 
+        "TXENn", "UCSZn2", "TXB8n", "UMSELn1", "UMSELn0", "UPMn1", "UPMn0", 
+        "USBSn", "UCSZn1", "UCSZn0", "UCPOLn"
+    ]
 
+    file.write("\n")
+    for definition in definitions:
+        file.write(f"#define {definition} 0\n")
 
 def add_DAC(file):
     """
@@ -52,7 +40,6 @@ def add_DAC(file):
     file.write("#define DAC_output_disable()        DAC0_CTRLA &= ~(1 << DAC_OUTEN_bp)\n")
     file.write("#define DAC_load(data)                  DAC0_DATA = (data << 6)")
     
-
 def add_ADC(file):
     """
     add_ADC adds to the desired .cpp file the information/definitions for ADC
@@ -183,7 +170,7 @@ def pdf_to_excel(pdf_file, page_numbers):
                     # create the sheet name for the excel file
                     sheet_name = f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}"
                     # write to the excel file
-                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                    df.to_excel(writer, sheet_name, index=False)
         # If no tables exist, throw alert.
         else: 
             sg.popup("ALERT", "No Tables Exist.")
