@@ -10,7 +10,6 @@ Future functionality that could be included
 def PWM():
 def Timers():
 def Interrupts():
-def SPI():
 def I2C():
 """
 
@@ -18,10 +17,11 @@ def add_SPI(file):
     """
     add_SPI() adds to the desired .cpp file the definitions for SPI
     """
+    # establish the registers to define
     definitions = [
         "SPIE", "SPE", "DORD", "MSTR", "CPOL", "CPHA", "SPR1", "SPR0", "SPI2X",
         "MSB", "LSB"
-    ]
+    ] # write to the .cpp file for each register
     file.write("\n")
     for definition in definitions:
         file.write(f"#define {definition} 0\n")
@@ -30,11 +30,12 @@ def add_USART(file):
     """
     add_USART adds to the desired .cpp file the definitions for USART
     """
+    # establish the registers to define
     definitions = [
         "TXCn", "U2Xn", "MPCMn", "RXCIEn", "TXCIEn", "UDRIEn", "RXENn", 
         "TXENn", "UCSZn2", "TXB8n", "UMSELn1", "UMSELn0", "UPMn1", "UPMn0", 
         "USBSn", "UCSZn1", "UCSZn0", "UCPOLn"
-    ]
+    ]  # write to the .cpp file for each register
 
     file.write("\n")
     for definition in definitions:
@@ -75,6 +76,7 @@ def excel_to_prgm(wbactivesheet):
     with open('output.cpp', 'w') as file:
         # get the headers from the first row of the worksheet
         headers = [cell.value for cell in wbactivesheet[1]]
+        # check for specific headers to add define statements to the .cpp file
         if headers.__contains__("RXCIEn") or headers.__contains__("UMSELn1") or headers.__contains__("RXCn"):
             add_USART(file)
         if headers.__contains__("SPIE") or headers.__contains__("MSB") or headers.__contains__("SPI2X"):
@@ -92,13 +94,13 @@ def excel_to_prgm(wbactivesheet):
                 # skip the cells with invalid data
                 if i in indices_to_exclude or not cell or cell in ['-', '—', ' ']:
                     continue
-                cell = cell.split('(')[0] if '(' in cell else cell
+                cell = cell.split('(')[0] if '(' in cell else cell # THROWS ISSUE IF CELL VALUE IS NOT INT
                 # prevent large amount of text from showing
-                if len(cell) > 15: continue
+                if len(cell) > 15: continue # THROWS ISSUE IF CELL VALUE IS NOT INT
                  # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
                 prefix_indices = {'PIN': (3, 4), 'PORT': (4, 5), 'DD': (2, 3)}
                 for prefix, indices in prefix_indices.items():
-                    if prefix in cell:
+                    if prefix in cell: # THROWS ISSUE IF CELL VALUE IS NOT INT
                         file.write(f'#define {cell} {cell[indices[0]]}, {cell[indices[1]]}\n')
                         break
                 else: # if none of the above is true, define with original data/info
