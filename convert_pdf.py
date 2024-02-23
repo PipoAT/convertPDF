@@ -94,14 +94,19 @@ def excel_to_prgm(wbactivesheet):
                 # skip the cells with invalid data
                 if i in indices_to_exclude or not cell or cell in ['-', '—', ' ']:
                     continue
-                cell = cell.split('(')[0] if '(' in cell else cell # THROWS ISSUE IF CELL VALUE IS NOT INT
                 # prevent large amount of text from showing
-                if len(cell) > 15: continue # THROWS ISSUE IF CELL VALUE IS NOT INT
+                try:
+                    if len(cell) > 15: continue
+                except TypeError:
+                    continue
                  # checks if the cell contains PIN, PORT, or DD to specifically format the resulting cpp define directive
                 prefix_indices = {'PIN': (3, 4), 'PORT': (4, 5), 'DD': (2, 3)}
                 for prefix, indices in prefix_indices.items():
-                    if prefix in cell: # THROWS ISSUE IF CELL VALUE IS NOT INT
-                        file.write(f'#define {cell} {cell[indices[0]]}, {cell[indices[1]]}\n')
+                    if prefix in cell:
+                        try:
+                            file.write(f'#define {cell} {cell[indices[0]]}, {cell[indices[1]]}\n')
+                        except TypeError:
+                            continue
                         break
                 else: # if none of the above is true, define with original data/info
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
