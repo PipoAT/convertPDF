@@ -135,26 +135,21 @@ def merge_cells_with_text(excel_file, sheet_name):
     ws = wb[sheet_name]
     # Iterate over the rows in the sheet
     for cell in (c for row in ws.iter_rows() for c in row):
-        # Get the value of the current cell as a stripped string (empty string if None)
-        value = str(cell.value).strip() if cell.value is not None else ''
-        # Check if the current cell contains non-empty text
-        if value:
-            # Find the next non-empty cell in the row
-            while cell.column <= ws.max_column:
-                # Get the value of the next cell as a stripped string (empty string if None)
-                next_cell = ws.cell(row=cell.row, column=cell.column).value
-                # If the next cell contains non-empty text, exit the loop
-                if next_cell is not None:
-                    break
-                cell.column += 1
-            # Merge the cells from the current cell to the next non-empty cell
-            ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=cell.column)
+        # Find the next non-empty cell in the row
+        while cell.column <= ws.max_column:
+            # Get the value of the next cell as a stripped string (empty string if None)
+            next_cell = ws.cell(row=cell.row, column=cell.column).value
+            # If the next cell contains non-empty text, exit the loop
+            if next_cell is not None:
+                break
+            cell.column += 1
+        # Merge the cells from the current cell to the next non-empty cell
+        ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=cell.column)
 
     # Save the workbook
     wb.save(excel_file)
     # convert to .cpp file with define statements
     excel_to_prgm(wb.active)
-
 
 def pdf_to_excel(pdf_file, page_numbers):
     '''
