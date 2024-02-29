@@ -9,9 +9,17 @@ Future functionality that could be included
 
 def PWM():
 def Timers():
-def Interrupts():
 def I2C():
 """
+
+def add_Interrupts(file):
+    file.write("\n\n")
+    # define if _AVR is defined
+    file.write("#define interruptsOn()  sei()\n")
+    file.write("#define interruptsOff() cli()\n")
+    # define if _XC is defined    
+    file.write("#define interruptsOn()  ei()\n")
+    file.write("#define interruptsOff() di()\n")
 
 def add_SPI(file):
     """
@@ -111,6 +119,7 @@ def excel_to_prgm(wbactivesheet):
                 else: # if none of the above is true, define with original data/info
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
         add_ADC(file)
+        add_Interrupts(file)
     
 def merge_cells_with_text(excel_file, sheet_name):
     '''
@@ -156,9 +165,8 @@ def pdf_to_excel(pdf_file, page_numbers):
     :param page_numbers: user-defined pages of a pdf as an integer(s) that the script will locate data from within the pdf
     '''
     # obtain file names, folder, and pages
-    pdf_file_name = os.path.splitext(os.path.basename(pdf_file))[0]
     folder_selected = os.path.dirname(pdf_file)
-    excel_file = os.path.join(folder_selected, pdf_file_name[:10] + ".xlsx")
+    excel_file = os.path.join(folder_selected, os.path.basename(pdf_file)[:10] + ".xlsx")
 
     has_tables = False
     with pdfplumber.open(pdf_file) as pdf:
@@ -189,14 +197,14 @@ def pdf_to_excel(pdf_file, page_numbers):
                     # Convert numeric values to numeric type
                     df = df.apply(pd.to_numeric, errors='ignore')
                     # create the sheet name for the excel file
-                    sheet_name = f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}"
+                    sheet_name = f"Page{page_numbers}_Table{j+1}"
                     # write to the excel file
                     df.to_excel(writer, sheet_name, index=False)
         # If no tables exist, throw alert.
         else: 
             sg.popup("ALERT", "No Tables Exist.")
 
-    merge_cells_with_text(excel_file, f"{pdf_file_name[:10]}_Page{page_numbers}_Table{j+1}") if has_tables else ""
+    merge_cells_with_text(excel_file, f"Page{page_numbers}_Table{j+1}") if has_tables else ""
 
 
 # define the layout of the GUI
