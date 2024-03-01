@@ -13,6 +13,11 @@ def I2C():
 """
 
 def add_Interrupts(file):
+    """
+    add_Interrupts() adds the desired definitions of the interrupt calls to the .cpp file
+
+    :param file: the active .cpp file to be writen to
+    """
     file.write("\n\n")
     # define if _AVR is defined
     file.write("#define interruptsOn()  sei()\n")
@@ -24,6 +29,8 @@ def add_Interrupts(file):
 def add_SPI(file):
     """
     add_SPI() adds to the desired .cpp file the definitions for SPI
+
+    :param file: the active .cpp file to be writen to
     """
     # establish the registers to define
     definitions = [
@@ -37,6 +44,8 @@ def add_SPI(file):
 def add_USART(file):
     """
     add_USART adds to the desired .cpp file the definitions for USART
+
+    :param file: the active .cpp file to be writen to
     """
     # establish the registers to define
     definitions = [
@@ -52,6 +61,8 @@ def add_USART(file):
 def add_DAC(file):
     """
     add_DAC adds to the desired .cpp file the information/definitions for DAC
+
+    :param file: the active .cpp file to be writen to
     """
     file.write("\n")
     file.write("#define HAL_INCLUDES_DAC    1\n")
@@ -64,6 +75,8 @@ def add_DAC(file):
 def add_ADC(file):
     """
     add_ADC adds to the desired .cpp file the information/definitions for ADC
+
+    :param file: the active .cpp file to be writen to
     """
     file.write("\n")
     file.write("#define HAL_INCLUDES_ADC    1\n")
