@@ -136,13 +136,12 @@ def merge_cells_with_text(excel_file, sheet_name):
     # Iterate over the rows in the sheet
     for cell in (c for row in ws.iter_rows() for c in row):
         # Find the next non-empty cell in the row
-        while cell.column <= ws.max_column:
+        for column in range(cell.column, ws.max_column + 1):
             # Get the value of the next cell as a stripped string (empty string if None)
-            next_cell = ws.cell(row=cell.row, column=cell.column).value
+            next_cell = ws.cell(row=cell.row, column=column).value
             # If the next cell contains non-empty text, exit the loop
             if next_cell is not None:
                 break
-            cell.column += 1
         # Merge the cells from the current cell to the next non-empty cell
         ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=cell.column)
 
@@ -162,7 +161,6 @@ def pdf_to_excel(pdf_file, page_numbers):
     # obtain file names, folder, and pages
     folder_selected = os.path.dirname(pdf_file)
     excel_file = os.path.join(folder_selected, os.path.basename(pdf_file)[:10] + ".xlsx")
-
 
     with pdfplumber.open(pdf_file) as pdf:
         # check if the pages are within the range of the pdf
@@ -187,10 +185,8 @@ def pdf_to_excel(pdf_file, page_numbers):
 
                 # Convert numeric values to numeric type
                 df = df.apply(pd.to_numeric, errors='ignore')
-                # create the sheet name for the excel file
-                sheet_name = f"Page{page_numbers}_Table{j+1}"
                 # write to the excel file
-                df.to_excel(writer, sheet_name, index=False)
+                df.to_excel(writer, f"Page{page_numbers}_Table{j+1}", index=False)
         # If no tables exist, throw alert.
         sg.popup("ALERT", "No Tables Exist.") if has_tables == False else ""
 
@@ -226,7 +222,7 @@ while True:
         # check if the page numbers and pdf file are valid inputs by user
         if not pdf_file:
             sg.popup("ALERT","Please select a PDF file")
-        elif page_numbers <= 0 or page_numbers >= len(pdf_file.pages):
+        elif page_numbers <= 0:
             sg.popup("ALERT","Please enter valid page numbers!")
         else:
             # call the function to convert
