@@ -163,41 +163,36 @@ def pdf_to_excel(pdf_file, page_numbers):
     folder_selected = os.path.dirname(pdf_file)
     excel_file = os.path.join(folder_selected, os.path.basename(pdf_file)[:10] + ".xlsx")
 
-    has_tables = False
+
     with pdfplumber.open(pdf_file) as pdf:
         # check if the pages are within the range of the pdf
-        try:
-            page = pdf.pages[page_numbers-1]
-        # handle index/out of range error by setting page to 0 to indicate no tables exist
-        except IndexError:
-            page = pdf.pages[0]
+        page = pdf.pages[page_numbers-1] if page_numbers <= len(pdf.pages) else pdf.pages[0]
 
         # checks if there is existing data
         tables = page.extract_tables()
-        if any(cell.strip() for table in tables for row in table for cell in row):
-            has_tables = True
-            # create the ExcelWriter object outside the loop
-            with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-                # iterates through each table and formats the data in the excel spreadsheet
-                for j, table in enumerate(tables):
-                    df = pd.DataFrame(table[1:], columns=table[0])
+        has_tables = any(cell.strip() for table in tables for row in table for cell in row)
+            
+        # create the ExcelWriter object outside the loop
+        with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+            # iterates through each table and formats the data in the excel spreadsheet
+            for j, table in enumerate(tables):
+                df = pd.DataFrame(table[1:], columns=table[0])
 
-                    try:
-                        # Exclude rows with reserved names or '-'
-                        df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
-                    # if there are any errors with exclusion, ignore and continue on
-                    except IndexError:
-                        continue
+                try:
+                    # Exclude rows with reserved names or '-'
+                    df = df[(df[df.columns[1]] != 'Reserved') & (df[df.columns[1]] != '—')]
+                # if there are any errors with exclusion, ignore and continue on
+                except IndexError:
+                    continue
 
-                    # Convert numeric values to numeric type
-                    df = df.apply(pd.to_numeric, errors='ignore')
-                    # create the sheet name for the excel file
-                    sheet_name = f"Page{page_numbers}_Table{j+1}"
-                    # write to the excel file
-                    df.to_excel(writer, sheet_name, index=False)
+                # Convert numeric values to numeric type
+                df = df.apply(pd.to_numeric, errors='ignore')
+                # create the sheet name for the excel file
+                sheet_name = f"Page{page_numbers}_Table{j+1}"
+                # write to the excel file
+                df.to_excel(writer, sheet_name, index=False)
         # If no tables exist, throw alert.
-        else: 
-            sg.popup("ALERT", "No Tables Exist.")
+        sg.popup("ALERT", "No Tables Exist.") if has_tables == False else ""
 
     merge_cells_with_text(excel_file, f"Page{page_numbers}_Table{j+1}") if has_tables else ""
 
@@ -231,7 +226,7 @@ while True:
         # check if the page numbers and pdf file are valid inputs by user
         if not pdf_file:
             sg.popup("ALERT","Please select a PDF file")
-        elif page_numbers <= 0:
+        elif page_numbers <= 0 or page_numbers >= len(pdf_file.pages):
             sg.popup("ALERT","Please enter valid page numbers!")
         else:
             # call the function to convert
