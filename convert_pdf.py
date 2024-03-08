@@ -133,35 +133,6 @@ def excel_to_prgm(wbactivesheet):
                     file.write(f'#define {row[1]}_Bit{8-i} {cell}\n')
         add_ADC(file)
         add_Interrupts(file)
-    
-def merge_cells_with_text(excel_file, sheet_name):
-    '''
-    merge_cells_with_text is a function that merges cells in an Excel file
-    which include the one with any non-empty text followed by any and all cells
-    that are blank to the right of that cell
-
-    :param excel_file: the excel file that contains data/cells that need formatted
-    :param sheet_name: the active sheet within the excel file that contains data/cells that need formatted
-    '''
-    # Load the workbook and select the sheet
-    wb = load_workbook(excel_file)
-    ws = wb[sheet_name]
-    # Iterate over the rows in the sheet
-    for cell in (c for row in ws.iter_rows() for c in row):
-        # Find the next non-empty cell in the row
-        for column in range(cell.column, ws.max_column + 1):
-            # Get the value of the next cell as a stripped string (empty string if None)
-            next_cell = ws.cell(row=cell.row, column=column).value
-            # If the next cell contains non-empty text, exit the loop
-            if next_cell is not None:
-                break
-        # Merge the cells from the current cell to the next non-empty cell
-        ws.merge_cells(start_row=cell.row, start_column=cell.column, end_row=cell.row, end_column=cell.column)
-
-    # Save the workbook
-    wb.save(excel_file)
-    # convert to .cpp file with define statements
-    excel_to_prgm(wb.active)
 
 def pdf_to_excel(pdf_file, page_numbers):
     '''
@@ -199,7 +170,8 @@ def pdf_to_excel(pdf_file, page_numbers):
         # If no tables exist, throw alert.
         sg.popup("ALERT", "No Tables Exist.") if has_tables == False else ""
 
-    merge_cells_with_text(excel_file, f"Page{page_numbers}_Table{j+1}") if has_tables else ""
+    wb = load_workbook(excel_file)
+    excel_to_prgm(wb.active)
 
 
 # define the layout of the GUI
